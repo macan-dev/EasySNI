@@ -1,15 +1,17 @@
-<h1 align="center">SNI / SPlus Tunnel Suite</h1>
+<h1 align="center">EzSNI</h1>
+
+<p align="center"><i>by MacanDev</i></p>
 
 <p align="center">
   <b>An all-in-one, fully offline DPI-bypass &amp; SNI-spoofing toolkit — written in Go.</b><br>
-  Local proxy · SNI fragmentation · fake-packet desync · SPlus LiveKit tunnel · scanners · Xray tester · WinDivert manager
+  Local proxy · SNI fragmentation · fake-packet desync · CDN fronting · SPlus LiveKit tunnel · scanners · Xray tester · WinDivert manager
 </p>
 
 <p align="center">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.22%2B-00ADD8">
   <img alt="Platform" src="https://img.shields.io/badge/OS-Windows%20%7C%20Linux%20%7C%20macOS-444">
-  <img alt="UI" src="https://img.shields.io/badge/UI-EN%20%2F%20%D9%81%D8%A7%D8%B1%D8%B3%DB%8C-7c3aed">
-  <img alt="Offline" src="https://img.shields.io/badge/assets-100%25%20offline-00c853">
+  <img alt="UI" src="https://img.shields.io/badge/UI-EN%20%2F%20%D9%81%D8%A7%D8%B1%D8%B3%DB%8C-2fe6c8">
+  <img alt="Offline" src="https://img.shields.io/badge/assets-100%25%20offline-34d399">
 </p>
 
 <p align="center">
@@ -47,11 +49,12 @@ A Go rewrite and major expansion of a Python SNI-spoofing / DPI-bypass tool, del
 
 | Area | What you get |
 |------|--------------|
-| **SNI Tunnel** | Dual-mode local TCP proxy — *transparent* (terminates TLS upstream with a spoofed SNI) or *passthrough* (raw TCP for clients with their own TLS). Inline relay test, port check, and LAN sharing. |
+| **SNI Tunnel** | Triple-mode local TCP proxy — *transparent* (terminates TLS upstream with a spoofed SNI), *passthrough* (raw TCP for clients with their own TLS), or *CDN fronting* (front SNI + rewritten `Host` header). Accepts **multiple SNIs (one per line)**, rotated per connection. Inline relay test, port check, and LAN sharing. |
 | **DPI bypass** | SNI-aware ClientHello fragmentation, plus fake-ClientHello injection with `wrong_checksum` / `wrong_seq` desync and uTLS-style fingerprint presets. |
-| **SPlus Tunnel** | SOCKS5 over a SoroushPlus voice call's LiveKit data channel (port of [`theermia/SPlusTunnel`](https://github.com/theermia/SPlusTunnel)). |
-| **Xray Test** | Paste a `vless://`/`vmess://` link and run a real HTTPS request through it via your local spoofed-SNI proxy. |
-| **Scanners** | Single SNI check, relay timing, mass SNI scan (with a built-in captcha-domain list), and a Cloudflare IP sweeper. |
+| **SPlus Tunnel** | SOCKS5 over a SoroushPlus voice call's LiveKit data channel (port of [`theermia/SPlusTunnel`](https://github.com/theermia/SPlusTunnel)). Optional **username/password auth** for LAN-shared SOCKS. |
+| **Psiphon** | Embedded Psiphon device tunnel that dials out **through an upstream proxy this app exposes**, then offers local SOCKS5/HTTP for the whole device *(build with `-tags psiphon`)*. |
+| **Xray** | Test a `vless://`/`vmess://` link (direct or via the spoofed-SNI proxy), **mass-check many configs** by ping/relay delay, **run xray on the device** as a local SOCKS proxy, and **detect/download** the xray binary. |
+| **Scanners** | Single SNI check, relay timing, mass SNI scan (with a built-in captcha-domain list), a Cloudflare IP sweeper, and a **CDN-fronting edge tester** that ranks edge IPs by ping with one-click connect. |
 | **URI Parser** | Decode `vless://` / `vmess://` links and push host/port/SNI straight into the SNI Tunnel. |
 | **WinDivert** | One-click install / start / remove of the WinDivert kernel-driver service (Windows + Administrator). |
 | **Bilingual UI** | Toggle **English ⇄ Persian (فارسی)**, with full right-to-left layout. |
@@ -60,8 +63,8 @@ A Go rewrite and major expansion of a Python SNI-spoofing / DPI-bypass tool, del
 
 ```sh
 # requires Go 1.22+
-go build -o splus-suite .
-./splus-suite
+go build -o ezsni .
+./ezsni
 ```
 
 The panel opens at `http://127.0.0.1:8765/`. Use `-addr` to change the bind address and `-open=false` to skip auto-opening the browser. Everything except the SPlus tunnel works in this default build with **zero external dependencies**.
@@ -71,22 +74,31 @@ The panel opens at `http://127.0.0.1:8765/`. Use `-addr` to change the bind addr
 **Default (offline, no deps):**
 
 ```sh
-go build -o splus-suite .
+go build -o ezsni .
 ```
 
 **With the SPlus LiveKit tunnel:** the LiveKit transport sits behind a build tag so the default build stays dependency-free and compiles offline.
 
 ```sh
 go get github.com/livekit/server-sdk-go/v2@latest
-go build -tags livekit -o splus-suite .
+go build -tags livekit -o ezsni .
 ```
 
 Without `-tags livekit` the SPlus tab still loads, but **Start tunnel** returns these instructions instead of connecting. A recent SDK may require Go 1.23+; if `go get` asks for a toolchain upgrade, install a newer Go or pin a compatible SDK version (e.g. `@v2.16.3`). The three SDK touch points are isolated in `internal/splus/transport_livekit.go`.
 
+**With the embedded Psiphon tunnel:** likewise gated behind a build tag.
+
+```sh
+go get github.com/Psiphon-Labs/psiphon-tunnel-core/ClientLibrary/clientlib@latest
+go build -tags psiphon -o ezsni .
+```
+
+Without `-tags psiphon` the Psiphon tab loads but **Start** returns build instructions; the engine is isolated in `internal/psiphon/psiphon_real.go`. A real Psiphon deployment also needs valid Psiphon config values (propagation/sponsor IDs) supplied via the `PSIPHON_CONFIG` environment variable.
+
 **Cross-compile for Windows:**
 
 ```sh
-GOOS=windows GOARCH=amd64 go build -o splus-suite.exe .
+GOOS=windows GOARCH=amd64 go build -o ezsni.exe .
 ```
 
 ### Run-time flags
@@ -106,7 +118,7 @@ DPI-evasion defaults (also settable per-start in the SNI Tunnel tab):
 -ack-timeout  2s       max wait for the server response after injection
 ```
 
-Run `splus-suite -h` to see the full `-utls` preset list.
+Run `ezsni -h` to see the full `-utls` preset list.
 
 ### The control panel
 
@@ -128,14 +140,28 @@ The segment crafting (checksum, both corruption modes, the SNI parser and fragme
 
 > The raw-send paths are compiled for their targets but follow the documented WinDivert v2 / Linux raw-socket APIs; verify them on real hardware.
 
+### CDN fronting (important)
+
+CDN fronting in the SNI Tunnel presents an **allowed front domain as the TLS SNI** while rewriting the HTTP `Host:` header to the real target on the same CDN. This is only the *obfuscation layer*: a reachable edge IP with a passing ping/relay test means the CDN edge accepts your TLS — it does **not** by itself give you a working tunnel to the open internet.
+
+To actually move traffic you need a **backend protocol behind the CDN**, and that is what the Xray and Psiphon tabs are for:
+
+- Put a `vless://`/`vmess://`/`trojan` server behind the CDN (e.g. a WS+TLS config whose `host`/`sni` is the front domain), then **run Xray on this device** with that config — optionally routing its outbound through the SNI/CDN-fronting proxy on the chosen edge IP.
+- Or start one of this app's proxies and run **Psiphon** through it as the upstream.
+
+So the flow is: device → Xray/Psiphon (real proxy protocol) → CDN edge (fronted by the SNI layer) → your server → internet. Host-header fronting alone, with just an edge IP and no backend protocol, has nothing to tunnel — which is the expected behaviour when "ping and relay are OK" but nothing flows.
+
 ### Xray tester
 
-Install `xray` (or `v2ray`) and place it on `PATH` or next to the executable. Then:
+Set the xray path (or **Detect** / **Download** the binary), then:
 
-1. Start the **SNI Tunnel** proxy in **PASSTHROUGH** mode — its listen port = the Xray tab's *local proxy port*, its connect IP/port = your real server.
-2. Paste a `vless://`/`vmess://` link in the Xray tab and run the test.
+- **Single test** — paste a link and run a real HTTPS request. *Direct* connects straight to the config server; unchecking it routes through the local SNI proxy (start that proxy in PASSTHROUGH first). If the proxy isn't listening the test fails fast; if Xray errors, its log is surfaced (no bare "EOF").
+- **Mass URI check** — paste many configs (one per line) and rank them by ping (TCP connect) and relay delay (TLS) to each config's own server. No xray needed; **Use** sends a row to the runner.
+- **Run xray on this device** — launch xray as a persistent local SOCKS5 your whole device can point at (bind `0.0.0.0` to share on the LAN).
 
-Xray points its outbound at your local proxy and measures a real HTTPS request through it. If the proxy isn't listening on that port the test fails fast with a clear message; if Xray itself errors, its log is surfaced (no more bare "EOF").
+### Psiphon device tunnel
+
+Builds only with `-tags psiphon` (see Building). It runs the embedded Psiphon tunnel configured with `UpstreamProxyUrl` set to a proxy this app exposes (the SNI Tunnel, or the SPlus SOCKS), and provides local SOCKS5/HTTP proxies for the device to use. Without the build tag the tab returns build instructions; the engine and Psiphon dependency are isolated in `internal/psiphon/psiphon_real.go` and can't be compiled or verified in the default offline build.
 
 ### WinDivert
 
@@ -224,11 +250,12 @@ Provided as-is, for lawful network diagnostics and censorship circumvention. No 
 
 | بخش | چه چیزی به‌دست می‌آورید |
 |------|--------------------------|
-| **تونل SNI** | پروکسی محلی TCP دوحالته — *شفاف* (خاتمهٔ TLS با SNI جعلی) یا *عبوری* (TCP خام برای کلاینت‌هایی که TLS خودشان را دارند). همراه با تست رله، بررسی پورت و اشتراک شبکه. |
+| **تونل SNI** | پروکسی محلی TCP سه‌حالته — *شفاف* (خاتمهٔ TLS با SNI جعلی)، *عبوری* (TCP خام برای کلاینت‌هایی که TLS خودشان را دارند) یا *CDN فرانتینگ* (SNI فرانت + بازنویسی هدر `Host`). از **چند SNI (هر خط یک مورد)** که به‌ازای هر اتصال چرخش می‌یابند پشتیبانی می‌کند. همراه با تست رله، بررسی پورت و اشتراک شبکه. |
 | **عبور از DPI** | تکه‌تکه‌سازی ClientHello مبتنی بر SNI، به‌علاوهٔ تزریق ClientHello جعلی با حالت‌های `wrong_checksum` / `wrong_seq` و پریست‌های اثرانگشت به سبک uTLS. |
-| **تونل SPlus** | SOCKS5 روی کانال دادهٔ LiveKit یک تماس صوتی سروش‌پلاس (پورت‌شدهٔ [`theermia/SPlusTunnel`](https://github.com/theermia/SPlusTunnel)). |
-| **تست Xray** | یک لینک `vless://`/`vmess://` وارد کنید و یک درخواست واقعی HTTPS را از طریق پروکسی جعل‌SNI محلی‌تان اجرا کنید. |
-| **اسکنرها** | بررسی تکی SNI، زمان‌سنجی رله، اسکن گروهی SNI (با لیست داخلی دامنه‌های کپچا) و جاروی IP کلودفلر. |
+| **تونل SPlus** | SOCKS5 روی کانال دادهٔ LiveKit یک تماس صوتی سروش‌پلاس (پورت‌شدهٔ [`theermia/SPlusTunnel`](https://github.com/theermia/SPlusTunnel)). همراه با **احراز هویت نام‌کاربری/رمز** اختیاری برای SOCKS اشتراکی در شبکه. |
+| **سایفون** | تونل دستگاه سایفونِ تعبیه‌شده که خروجش را **از طریق یک پروکسی بالادست که همین برنامه ارائه می‌دهد** برقرار می‌کند، سپس SOCKS5/HTTP محلی برای کل دستگاه فراهم می‌کند *(ساخت با `-tags psiphon`)*. |
+| **Xray** | تست لینک `vless://`/`vmess://` (مستقیم یا از طریق پروکسی جعل‌SNI)، **بررسی گروهی چندین کانفیگ** بر اساس پینگ/تأخیر رله، **اجرای xray روی دستگاه** به‌عنوان پروکسی SOCKS محلی، و **تشخیص/دانلود** فایل اجرایی xray. |
+| **اسکنرها** | بررسی تکی SNI، زمان‌سنجی رله، اسکن گروهی SNI (با لیست داخلی دامنه‌های کپچا)، جاروی IP کلودفلر و یک **تستر اِج CDN فرانتینگ** که IPهای اِج را بر اساس پینگ مرتب کرده و با یک کلیک متصل می‌شود. |
 | **تجزیه‌گر URI** | لینک‌های `vless://`/`vmess://` را تجزیه کرده و هاست/پورت/SNI را مستقیم به تونل SNI بفرستید. |
 | **WinDivert** | نصب / راه‌اندازی / حذف یک‌کلیکی سرویس درایور هسته‌ای WinDivert (ویندوز + دسترسی مدیر). |
 | **رابط دوزبانه** | جابه‌جایی **انگلیسی ⇄ فارسی**، با چیدمان کامل راست‌به‌چپ. |
@@ -237,8 +264,8 @@ Provided as-is, for lawful network diagnostics and censorship circumvention. No 
 
 ```sh
 # به Go نسخهٔ ۱.۲۲ یا بالاتر نیاز است
-go build -o splus-suite .
-./splus-suite
+go build -o ezsni .
+./ezsni
 ```
 
 پنل روی `http://127.0.0.1:8765/` باز می‌شود. با `-addr` آدرس را عوض کنید و با `-open=false` از باز شدن خودکار مرورگر جلوگیری کنید. در این بیلد پیش‌فرض، همه‌چیز جز تونل SPlus **بدون هیچ وابستگی خارجی** کار می‌کند.
@@ -248,14 +275,14 @@ go build -o splus-suite .
 **پیش‌فرض (آفلاین، بدون وابستگی):**
 
 ```sh
-go build -o splus-suite .
+go build -o ezsni .
 ```
 
 **همراه با تونل LiveKit (SPlus):** ترانسپورت LiveKit پشت یک build tag قرار دارد تا بیلد پیش‌فرض بدون وابستگی و آفلاین بماند.
 
 ```sh
 go get github.com/livekit/server-sdk-go/v2@latest
-go build -tags livekit -o splus-suite .
+go build -tags livekit -o ezsni .
 ```
 
 بدون `-tags livekit` تب SPlus باز می‌شود اما **شروع تونل** به‌جای اتصال، همین دستورها را برمی‌گرداند. SDK جدید ممکن است به Go نسخهٔ ۱.۲۳ به بالا نیاز داشته باشد؛ اگر `go get` درخواست ارتقای toolchain داد، Go جدیدتری نصب کنید یا نسخهٔ سازگاری از SDK را پین کنید (مثلاً `@v2.16.3`). سه نقطهٔ تماس با SDK در فایل `internal/splus/transport_livekit.go` ایزوله شده‌اند.
@@ -263,7 +290,7 @@ go build -tags livekit -o splus-suite .
 **کامپایل برای ویندوز:**
 
 ```sh
-GOOS=windows GOARCH=amd64 go build -o splus-suite.exe .
+GOOS=windows GOARCH=amd64 go build -o ezsni.exe .
 ```
 
 ### پرچم‌های اجرا
@@ -283,7 +310,7 @@ GOOS=windows GOARCH=amd64 go build -o splus-suite.exe .
 -ack-timeout  2s       حداکثر انتظار برای پاسخ سرور پس از تزریق
 ```
 
-برای دیدن فهرست کامل پریست‌های `-utls` دستور `splus-suite -h` را اجرا کنید.
+برای دیدن فهرست کامل پریست‌های `-utls` دستور `ezsni -h` را اجرا کنید.
 
 ### پنل کنترل
 
