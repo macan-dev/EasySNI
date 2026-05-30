@@ -34,7 +34,7 @@ Google-fronted relay — lives behind that one page. No installer, no hidden ser
 no telemetry. It's Go with an embedded UI, so the whole app is one portable file.
 
 <div align="center">
-<img src="docs/screenshots/dashboard.png" alt="V2RayEz dashboard (illustrative preview)" width="92%">
+<img src="docs/screenshots/dashboard.png" alt="V2RayEz dashboard" width="92%">
 </div>
 
 ### ✨ Features
@@ -166,7 +166,7 @@ xray/sing-box، اسکنرها، کتابخانهٔ کانفیگ و رلهٔ ف�
 برنامه یک فایل قابل‌حمل است.
 
 <div align="center">
-<img src="docs/screenshots/dashboard.png" alt="پیش‌نمایش داشبورد V2RayEz" width="92%">
+<img src="docs/screenshots/dashboard.png" alt=" داشبورد V2RayEz" width="92%">
 </div>
 
 ### ✨ ویژگی‌ها
